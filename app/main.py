@@ -40,49 +40,20 @@ seasonal_medians_source = "s3://soccer-storage/webapp-storage/data/raw/seasonal_
 # Add S3 client
 s3_client = boto3.client('s3')
 
-def create_sequences(data, target_column, sequence_length):
-    X = []
-    feature_data = data.drop(columns=[target_column])
-    feature_data = feature_data.select_dtypes(include=[np.number]).values.astype(np.float32)
 
-    for i in range(len(data) - sequence_length + 1):
-        X.append(feature_data[i:i + sequence_length])
-
-    return np.array(X)
-
-def predict_model(model, input_data):
-    y_pred = model.predict(input_data)
-    return y_pred
-
-def rolling_forecast(model, data, target_col, sequence_length, forecast_horizon):
-    rolling_data = data.copy()
-    rolling_forecast_df = pd.DataFrame(columns=['time', 'predicted_value'])
-
-    for _ in range(forecast_horizon):
-        input_sequence = create_sequences(rolling_data.tail(sequence_length), target_col, sequence_length)
-        predicted_value = predict_model(model, input_sequence)
-
-        new_row = rolling_data.tail(1)
-        new_timestamp = pd.to_datetime(new_row.index[0]) + pd.Timedelta(hours=1)
-        new_row.index = pd.DatetimeIndex([new_timestamp])
-
-        rolling_data = pd.concat([rolling_data, new_row], ignore_index=True)
-
-        rolling_forecast_df = pd.concat(
-            [rolling_forecast_df, pd.DataFrame([[pd.to_datetime(rolling_data.tail(1).index), predicted_value]], columns=['time', 'predicted_value'])],
-            ignore_index=True
-        )
-    rolling_forecast_df.drop(columns=['time'], inplace=True, errors='ignore')
-    # target_scaler = joblib.load('app/target_scaler.pkl')
-    # rolling_forecast_df['predicted_value'] = target_scaler.inverse_transform(rolling_forecast_df['predicted_value'].values.reshape(-1, 1))
-    return rolling_forecast_df
 
 @app.get("/")
 def read_root():
     return {"message": "Welcome to the Weather Forecasting API"}
 
+
+
 @app.post("/predict/onetime")
 async def predict_onetime():
+    '''
+    This endpoint performs a one-time prediction using the production model.
+    It loads the model from W&B, processed the data from S3, and returns the predictions.
+    '''
     try:
         model = load_production_model()
     except Exception as e:
@@ -102,8 +73,14 @@ async def predict_onetime():
 
 from fastapi import Body
 
+
+
 @app.post("/predict/next", response_model=ForecastResponse)
 async def predict_next(request: ForecastRequest):
+    '''
+    This endpoint performs multi-step forecasting using the production model.
+    It loads the model from W&B, processes the data from S3, and returns the predictions.
+    '''
     try:
         # Load the production model
         model = load_production_model()
@@ -136,8 +113,14 @@ async def predict_next(request: ForecastRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error during prediction: {str(e)}")
 
+
+
 @app.post("/predict/cache")
 async def predict_and_cache():
+    '''
+    This endpoint performs multi-step forecasting using the production model.
+    It is the same as the /predict/next endpoint, but it caches the predictions csv in S3.
+    '''
     try:
         # Load the production model
         model = load_production_model()
@@ -211,11 +194,13 @@ async def predict_and_cache():
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error during prediction caching: {str(e)}")
 
+
+
 if __name__ == "__main__":
+    # debugger
     df = pd.read_csv(processed_data_source)
     print(df.head())
     lstm_model = load_model(model_source, compile=False)
     y_pred = rolling_forecast(lstm_model, df, target_col='pm2_5_(μg/m³)', sequence_length=24, forecast_horizon=48)
-    #y_pred = lstm_model.predict(create_sequences(df.tail(24), 'pm2_5_(μg/m³)', 24))
     print(y_pred)
 

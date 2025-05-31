@@ -22,6 +22,7 @@ raw_data_source = f's3://soccer-storage/webapp-storage/data/raw/raw_data_{timela
 processed_data_source = f's3://soccer-storage/webapp-storage/data/processed/processed_data_{timelabel}.csv'  #save path
 seasonal_medians_source = "s3://soccer-storage/webapp-storage/data/raw/seasonal_medians.csv"
 
+os.environ['WANDB_API_KEY'] = 'SORRY ITS A SECRET JING'
 
 def create_sequences(data, target_column, sequence_length):
     X = []
@@ -62,9 +63,10 @@ def rolling_forecast(model, data, target_col, sequence_length, forecast_horizon)
 
     return rolling_forecast_df
 
-os.environ['WANDB_API_KEY'] = '02a72bd63a10642bf3e45a5b0d218102675e9d6b'
-
 def load_production_model():
+    '''
+    Load the latest production model artifact from W&B without opening a session.
+    '''
     try:
         # Get latest production model artifact without opening a session
         api = wandb.Api()
