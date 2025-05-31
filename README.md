@@ -1,5 +1,5 @@
 # Weather Forecasting API
-This repo is flying solo from the main one for one noble reason: we’re broke af. No AWS, no fancy cloud bills—just good ol' budget-friendly, lightweight deployment.
+This repo is flying solo from the main one for one noble reason: we’re broke af, and we're not gonna deploy every used asset to ECS. No fancy cloud bills—just good ol' budget-friendly, lightweight deployment.
 
 ## Quick Start
 
